@@ -1,188 +1,259 @@
-# HRI Project: Two Arms with ESP32 Screens
+# HRI Project: Two Robot Heads (ESP32), Camera and ROS 2
 
-Team: Enrique Feria Abascal, Samin Haque, Sinan Onder. Updated 6 October 2026.
+Team: Enrique Feria Abascal, Samin Haque, Sinan Onder. Updated 7 October 2026.
 
-The study stays the same as the block version (`HRI_Study_Design_Final_Presentable`). We only replace the physical blocks with two ESP32 touch screens, one held by each Kinova Gen3 arm. The research question, constructs, H1 to H4, measures, design, 16 participants and 10-minute sessions are unchanged. The updated form is `HRI_Study_Design_ESP32_TwoArms.docx` in this folder.
+This folder holds the whole project in three files:
+- `HRI_Study_Design_ESP32_RobotHeads.docx`: the course study design form.
+- This explanation file.
+- `HRI_ESP32_Two_Modes.png`: the image below.
 
-![The two modes](HRI_ESP32_Two_Modes.png)
+![Setup and the two modes](HRI_ESP32_Two_Modes.png)
 
-## 1. The idea in short
+## 1. Summary
 
-- Each block still has a colour and a number from 1 to 9, but it is now digital and split across the two arms. The **left arm's screen shows the colour** (the whole screen lights up in red, blue or yellow). The **right arm's screen shows the number** (a large white digit).
-- An arm moves its screen from a waiting position toward the participant. The screen lights up only when the arm has stopped.
-- The participant **takes** each half by touching its screen. This replaces taking a block from the gripper. The screen goes blank and the arm moves it away again. If nobody touches it within 2 seconds, it moves away anyway.
-- The participant **sorts** the block by pressing one of three large coloured buttons (red, blue, yellow). These replace the three bins.
-- The participant keeps a **running mental total** of the numbers, as before.
+- The Kinova arms are no longer available. We keep the **same study**:
+  - Two agents present a colour and a number with coordinated (synchronous) or uncoordinated (asynchronous) timing.
+  - The participant sorts numbered blocks into coloured bins and keeps a running sum.
+  - We measure cognitive load and where the disturbance goes.
+- The two arms are replaced by **two robot heads**: each is an ESP32 screen with an animated robot face, on a small stand to the left and right of the participant.
+- A **camera** records every session. **ROS 2** runs three topics (left robot, right robot, camera), and every trial is saved as one **rosbag**.
+- To make it clearly **Human-Robot Interaction and not just Human-Computer Interaction**, five HRI layers are built in (section 7). They are the same in both modes, so they add no conditions.
+- The research question, hypotheses H1 to H4, NASA-TLX, setup choice, 16 participants and 10-minute sessions stay the same.
 
-## 2. The two modes
+## 2. What changed from the Kinova version, and what stayed
 
-| | Coordinated (baseline) | Uncoordinated |
+| Part | Kinova version | Robot heads version |
 |---|---|---|
-| How the arms move | Together, like one team | Independently, each on its own schedule |
-| Arrival | Both screens arrive at the same time, every 5 s | Never at the same time: colour and number of a block arrive 1 to 3 s apart |
-| Which comes first | Always both together | Colour first in 10 blocks, number first in 10, mixed unpredictably |
-| Each arm's own gap | 5 s | 4 to 7 s (average about 5 s) |
-| Gap between any two arrivals | 5 s | 1 to 4 s |
-| Blocks and trial length | 20 blocks, last arrival at 95 s | Same 20 blocks, last arrival at 95 s |
-| Arm speed, positions, screens, buttons | Same | Same |
+| Agents | Two Kinova Gen3 arms holding ESP32 touch screens | Two robot heads: ESP32 screens with animated faces on stands |
+| How an instruction arrives | Arm moves the screen toward the participant; participant touches it | Robot looks up at the participant, shows its half for 2 s, then returns to its idle face |
+| Blocks | Digital blocks, sorted with three buttons | Physical numbered blocks, sorted into three physical coloured bins |
+| Pickup latency | Time from screen stop to touch | **Response time**: from the full instruction being shown to the block landing in the bin, from the camera |
+| Missed pickups | Screen left without a touch | **Missed blocks**: instructions with no block placed |
+| Recording | Robot and screen logs | ROS 2 rosbag with both robot topics and the camera on one clock |
+| Coordinated mode | Both arms together every 5 s | Both robots together every 5 s (unchanged) |
+| Uncoordinated mode | Arms on their own irregular schedules | Robots on the same irregular schedules (same arrival table) |
+| RQ, H1, H3, H4, TLX, setup choice, N = 16, 10 min | | Unchanged |
 
-In the coordinated mode the participant sees one complete block every 5 seconds and can catch both screens with both hands. In the uncoordinated mode the same information comes in two separate pieces at moments the participant cannot predict, so they have to watch both arms all the time. That is what "robot temporal coordination between the two arms" means in this study.
+## 3. The setup
 
-### Arrival times (seconds from trial start)
+```
+                [left robot head]                 [right robot head]
+                 shows the COLOUR                   shows the NUMBER
+                   (on a stand)                       (on a stand)
 
-The uncoordinated sequence was generated once with fixed rules and is used for every participant. Rules: each arm needs at least 4 s between its own arrivals (1 s in, up to 2 s at the participant, 1 s out); any two arrivals are at least 1 s apart; the two halves of a block are 1 to 3 s apart; colour-first and number-first are balanced 10 and 10, with never more than 3 in a row the same way; first arrival at 0 s and last at 95 s, as in the coordinated trial.
+                         [red bin]  [blue bin]  [yellow bin]
 
-| Block | Coordinated (both arms) | Uncoordinated: colour (left) | Uncoordinated: number (right) | First |
-|---|---|---|---|---|
-| 1 | 0 | 1 | 0 | number |
-| 2 | 5 | 5 | 6 | colour |
-| 3 | 10 | 9.5 | 11 | colour |
-| 4 | 15 | 14 | 15.5 | colour |
-| 5 | 20 | 21 | 19.5 | number |
-| 6 | 25 | 26 | 25 | number |
-| 7 | 30 | 31 | 29.5 | number |
-| 8 | 35 | 35 | 36 | colour |
-| 9 | 40 | 39 | 40.5 | colour |
-| 10 | 45 | 43.5 | 45.5 | colour |
-| 11 | 50 | 50.5 | 49.5 | number |
-| 12 | 55 | 54.5 | 56 | colour |
-| 13 | 60 | 61 | 60 | number |
-| 14 | 65 | 65.5 | 64 | number |
-| 15 | 70 | 69.5 | 71 | colour |
-| 16 | 75 | 73.5 | 76 | colour |
-| 17 | 80 | 78 | 80 | colour |
-| 18 | 85 | 85 | 84 | number |
-| 19 | 90 | 91 | 88 | number |
-| 20 | 95 | 95 | 93.5 | number |
+                              [tray of numbered blocks]
 
-These times assume a 1 s move each way. If the real arms need longer at a safe speed (measured in week 2), the schedule is stretched with the same rules.
+                                   participant
+                                        |
+                  camera on a tripod behind and above the participant,
+                  looking at the table: sees both robots, the tray, the bins and the hands
+```
 
-### Block sequences
-
-Two matched sequences: 7 red, 7 blue and 6 yellow blocks each, the same 20 numbers, total 97 in both, different order and pairing. They are swapped across conditions, as in the block version.
-
-- **Sequence A:** Red 2, Red 1, Yellow 6, Blue 2, Blue 3, Red 9, Red 4, Blue 3, Yellow 6, Blue 4, Yellow 5, Yellow 8, Red 5, Blue 4, Yellow 9, Red 1, Blue 3, Yellow 7, Blue 8, Red 7
-- **Sequence B:** Blue 9, Yellow 3, Yellow 2, Blue 3, Blue 9, Yellow 1, Red 6, Yellow 4, Blue 5, Red 4, Red 2, Yellow 8, Red 6, Yellow 7, Red 3, Blue 4, Red 8, Red 5, Blue 1, Blue 7
-
-Crossing the two orders with the two sequences gives 4 groups of 4 participants.
-
-## 3. What makes it more fun
-
-- **Catching screens.** The participant reaches out and touches a lit screen, a bit like catching a ball. On touch, the coloured tile or the number gives a short "caught" animation and the board's speaker clicks. This is the same in both modes and gives no right or wrong feedback.
-- **Big arcade buttons** for sorting, with a satisfying click, instead of dropping blocks into bins.
-- **Two-handed catches** in the coordinated mode, when both screens arrive together.
-- **Demo mode for the course presentation only** (not used with participants): the screens show each person's catch time after a short round. It is a fun way to show the setup on presentation day.
-
-## 4. What changed in the form, and what did not
-
-Only the sentences that described physical blocks, bins, grippers or handovers were rewritten. Everything else is word for word the Final Presentable version.
-
-| Section | Change |
+| Item | Details |
 |---|---|
-| Specific research question | "handover timing" became "timing between two Kinova Gen3 arms that present information on ESP32 screens" |
-| Constructs | Compensatory behaviour: "double waits" became "missed pickups" |
-| H2 | "take blocks later" became "take the screens later"; "more double waits" became "miss more pickups" |
-| Experimental conditions | New description of the screens, the touch to take, and the two modes (section 2 above); buttons replace bins |
-| Ordering effects | "reloads the blocks" became "loads the next trial" (no physical reload needed) |
-| Objective measures | Sorting accuracy is read from the button log. Pickup latency is now "screen stops until touch". **Double waits** became **missed pickups** (a screen leaves after 2 s without a touch) |
-| Procedure | Workstation now has three coloured buttons and two screens; everything else unchanged |
-| Hypotheses H1, H3, H4, manipulation check, NASA-TLX, setup choice, interview, session timing, sample size | Unchanged |
+| 2 robot heads | 2 ESP32 boards with colour screens (touch not needed). Each sits on a small stand at about eye level, cardboard or 3D printed, with a simple body so it reads as a robot and not as a monitor. |
+| Camera | USB webcam, 720p at 30 frames per second, on a tripod behind and above the participant. It records hands, blocks, bins and both robot screens, **not the face**. |
+| Blocks | 27 cubes, numbers 1 to 9, three of each, in a tray. There are more than needed, so the last choices are never forced. |
+| Bins | Three bins: red, blue, yellow |
+| Computer | Laptop or lab PC with Ubuntu and ROS 2 (Humble or Jazzy): micro-ROS agent, camera driver, scheduler, rosbag recorder |
+| Network | Small Wi-Fi router for the two ESP32 boards. Fallback: USB cables (micro-ROS serial transport) |
 
-Why double waits had to go: in the coordinated mode both screens always arrive together, so "two things waiting at once" happens in every block by design and says nothing about compensation. Missed pickups measures the same idea (the participant cannot keep up with the robots) and works in both modes.
+## 4. The robots
 
-## 5. Recheck of HRI_Study_Design_Final_Presentable
+| State | What the participant sees |
+|---|---|
+| Idle | Robot eyes looking slightly down, blinking slowly |
+| Look | Eyes move up and look at the participant (0.3 s) |
+| Show | Full-screen colour (left robot) or a large white number (right robot), 2 s |
+| Greet or goodbye | Short text such as "Hi, let's work together" or "Thank you!" at the start and end of the session |
 
-- Text is clean: no long dashes or arrows, British spelling throughout, all 7 Hoffman and Zhao hint lines plus the one Section 8.6 mention, headings in the course order.
-- One formatting fault: the H1 bullet was in a separate Word list from H2 to H4. It looks the same, but editing the list in Word behaves oddly. Fixed in the new file, so all four hypotheses are now in one list.
-- Weak points that the blocks version already had, and that the screens version keeps on purpose because we are keeping the study the same. Any of them can still be fixed later:
-  1. Sorting accuracy will probably be near 100% in both modes, so "sorting stays the same" (H3) is partly guaranteed by an easy task.
-  2. The running sum gives only one number per trial. An unannounced check after block 10 would add a second.
-  3. The manipulation check comes before NASA-TLX, so it may hint at the timing before workload is rated. Swapping the order fixes this.
-  4. The practice trial timing is not specified. Mixing both modes in the practice would keep it neutral.
-- Already solved by the screens: the exact pickup moment now comes from the touch screen, sorting is logged by the buttons instead of scored live, and there is no block reloading between trials.
+**One presentation:** Look (0.3 s), then Show (2 s), then back to Idle. The robots behave exactly like this in both modes; only the moments when they present change.
 
-## 6. Hardware
+## 5. The task
 
-| Item | Choice | Note |
+- The left robot shows a colour and the right robot a number. Together they are one block instruction, for example **red** and **4**.
+- The participant takes a **4** from the tray and puts it in the **red** bin.
+- They also keep a **running mental total** of all numbers and report it at the end of the trial.
+- **Sorting is described as the main task.**
+- 20 instructions per trial (about 2 minutes); 10 in the practice.
+- Two matched sequences, swapped across conditions. Each has 7 red, 7 blue and 6 yellow, the same 20 numbers, and a total of 97.
+  - **Sequence A:** Red 2, Red 1, Yellow 6, Blue 2, Blue 3, Red 9, Red 4, Blue 3, Yellow 6, Blue 4, Yellow 5, Yellow 8, Red 5, Blue 4, Yellow 9, Red 1, Blue 3, Yellow 7, Blue 8, Red 7
+  - **Sequence B:** Blue 9, Yellow 3, Yellow 2, Blue 3, Blue 9, Yellow 1, Red 6, Yellow 4, Blue 5, Red 4, Red 2, Yellow 8, Red 6, Yellow 7, Red 3, Blue 4, Red 8, Red 5, Blue 1, Blue 7
+
+## 6. The two modes
+
+| | Coordinated (synchronous) | Uncoordinated (asynchronous) |
 |---|---|---|
-| Arms | 2 Kinova Gen3, one on each side of the workstation | Second arm moved to IP 192.168.1.11 |
-| Screens | 2 M5Stack Core2 (ESP32, 2.0 inch capacitive touch screen, battery, speaker) | Battery means no cable along the arm. Capacitive touch needs no pressing force. |
-| Screen holders | 3D-printed cradle with a 40 mm square handle the gripper closes on | Bolt to the tool flange instead if there is no gripper |
-| Sorting buttons | 3 large arcade buttons (red, blue, yellow) with a USB encoder in a small box | Shows up on the PC as a game controller, no firmware needed |
-| Network | Small dedicated Wi-Fi router | Screens and PC on it; arms on their own Ethernet links |
-| PC | Ubuntu 22.04, ROS 2 Humble | One PC for both arms, screens and buttons, so all times use one clock |
+| How the robots behave | As a team: both present at the same moment | Independently, each on its own schedule, never at the same moment |
+| Timing | Every 5 s | Colour and number of a block arrive 1 to 3 s apart; each robot's own gaps vary from 4 to 7 s |
+| Which half comes first | Both together | Colour first in 10 blocks, number first in 10, mixed unpredictably (never more than 3 in a row the same way) |
+| Trial length | 20 blocks, last at 95 s | Same 20 blocks, last at 95 s |
+| Faces, display time, positions, blocks, bins, instructions | Same | Same |
 
-Rough cost of new parts: about 150 euro (two screens about 100, buttons and encoder about 20, router about 30).
+**Arrival times in the uncoordinated mode** (seconds from trial start, the same for every participant). In the coordinated mode both robots present at 0, 5, 10, and so on up to 95.
 
-## 7. Software
+| Block | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Left (colour) | 1 | 5 | 9.5 | 14 | 21 | 26 | 31 | 35 | 39 | 43.5 |
+| Right (number) | 0 | 6 | 11 | 15.5 | 19.5 | 25 | 29.5 | 36 | 40.5 | 45.5 |
 
-| Piece | What it does |
+| Block | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Left (colour) | 50.5 | 54.5 | 61 | 65.5 | 69.5 | 73.5 | 78 | 85 | 91 | 95 |
+| Right (number) | 49.5 | 56 | 60 | 64 | 71 | 76 | 80 | 84 | 88 | 93.5 |
+
+In the uncoordinated mode the participant often has to hold the first half in memory until the second half arrives, and cannot predict which robot comes next or when. That is the cost of two robots that do not coordinate with each other.
+
+## 7. Why this is HRI and not HCI
+
+Two screens on a table would be a computer interface. These five layers make them robots, and they are the same in both modes:
+
+1. **Embodiment and persona.** Two named robot coworkers with faces and bodies on stands in the shared workspace. They greet the participant and say goodbye.
+2. **Social behaviour.** Before every instruction a robot looks up at the participant, and it blinks while idle. This gives the robots attention and turn-taking that a display does not have.
+3. **Autonomy.** The robots act on their own as ROS 2 nodes; the experimenter only starts the trial.
+4. **Perception.** The camera is the robots' eyes on a ROS 2 topic. Response times and missed blocks come from what it saw.
+5. **Shared physical work.** The robots direct real work with real blocks and bins. The study is about **robot-robot coordination** (do the two robots act as a team?) and its effect on the human, which is a multi-robot HRI question.
+
+**Exploratory camera measure, movement rhythm (entrainment):** we track the participant's hand offline with MediaPipe. We measure how regular their actions are and how closely they follow the robots' rhythm. If people fall into step with coordinated robots and lose that rhythm with uncoordinated ones, this shows *where the disturbance goes* in an objective way.
+
+## 8. Research question and hypotheses
+
+**Research question:** Does subjective disturbance show up in objective performance, and if it does not, where does it go?
+
+**Manipulation check:** "The timing of the robots was predictable." and "The two robots felt well coordinated." (7-point scale).
+
+| Hypothesis | Wording |
 |---|---|
-| Screen firmware (Arduino, M5Unified) | Waits on UDP for `SHOW <id> <colour or number>` and `BLANK <id>`. Draws, then replies `LIT <id>`. On a touch while lit, sends `TOUCH <id>` and plays the catch animation. Ignores touches while blank. |
-| Arm node, one per arm (ROS 2, rclpy) | Same plan as for the blocks: stock `ros2_kortex` driver, each arm in its own ROS domain (11 and 12), taught poses replayed with fixed move times, no MoveIt. Per presentation: move to the presentation pose to arrive at the scheduled time, send `SHOW`, wait for `TOUCH` or 2 s, send `BLANK`, move back. No picking from a chute, so the cycle is much simpler than with blocks. |
-| Button logger | Reads the USB button box and logs each press with the PC time |
-| Session script | Starts both arm nodes with one shared start time and the participant's group |
-| Analysis notebook | pandas, pingouin, scipy, matplotlib |
+| H1 Workload | Participants report higher subjective workload in the uncoordinated mode. |
+| H2 Compensatory behaviour | In the uncoordinated mode, participants respond later and less regularly (longer and more variable response time), miss more blocks, and report more effort. |
+| H3 Performance | Sorting accuracy stays about the same in both modes; running-sum error increases in the uncoordinated mode. |
+| H4 Acceptance | Most participants would choose the coordinated robots for a full work shift (binomial test, at least 13 of 16). |
 
-**Log, one row per screen presentation:** participant, group, condition, trial, arm, block index, colour or number, scheduled arrival, arm stopped, screen lit, touch time, blank time, missed flag.
-**Button log:** participant, trial, PC time, colour pressed.
+## 9. Measures
 
-## 8. Measures and analysis
+**Subjective:** NASA-TLX after each mode, the manipulation check, the setup choice and two interview questions.
+
+**Objective:**
+
+| Measure | How it is measured |
+|---|---|
+| Sorting accuracy | After each trial the experimenter checks the bin contents against the sequence; the video confirms each placement. |
+| Running-sum error | Absolute difference between the reported and the correct total |
+| Response time | From the moment both halves of a block have been shown until the block lands in the bin, from the video. Mean and variability per trial. |
+| Missed blocks | Instructions for which no block was placed |
+| Movement rhythm (exploratory) | Hand tracking on the video: regularity of placements and how closely they follow the robots' rhythm |
+
+Response time starts when the instruction is complete, so waiting for the second half in the uncoordinated mode does not count as slowness.
+
+## 10. Procedure (about 10 minutes)
+
+1. Consent signed before the session, **including consent to video recording**.
+2. Briefing and instructions (1 min). The robots greet the participant.
+3. Practice with 10 instructions (1 min).
+4. Trial 1 with 20 instructions (2 min), coordinated or uncoordinated depending on the counterbalanced order.
+5. Manipulation check and NASA-TLX (1.5 min). Meanwhile the experimenter puts the blocks back and starts the next recording.
+6. Trial 2, the other mode (2 min).
+7. Manipulation check and NASA-TLX (1.5 min).
+8. Setup choice, interview and debrief (1 min). The robots say goodbye.
+
+Book 15-minute slots. Recruit 18 for 16 complete participants. Crossing the order with sequences A and B gives 4 groups of 4.
+
+## 11. ROS 2 setup (three topics, one rosbag per trial)
+
+| Topic | Published by | Content |
+|---|---|---|
+| `/robot_left/screen` | Scheduler node | Commands for the left robot: sequence number, state (idle, look, show, greet, bye), content (the colour) |
+| `/robot_right/screen` | Scheduler node | Same for the right robot (content is the number) |
+| `/camera/image_raw` | `usb_cam` or `v4l2_camera` node | Video of the table, recorded compressed (about 0.5 GB per trial) |
+
+- **ESP32 boards:** run micro-ROS, subscribe to their screen topic over Wi-Fi through the micro-ROS agent on the computer, and draw the face or the content.
+- **Scheduler node (Python, rclpy):** reads the participant's group and the arrival table. It sends "look" 0.3 s before each arrival, "show" at the arrival and "idle" 2 s later, plus the greeting and goodbye.
+- **Messages:** `std_msgs/String` carrying a small JSON text, for example `{"seq": 7, "state": "show", "content": "RED"}`. No custom message build is needed on the ESP32.
+- **Recording:** `ros2 bag record` with all three topics, one bag per trial, so every instruction and every video frame share one clock.
+- **Analysis script (Python):**
+  1. Reads each bag into a table of instruction times.
+  2. Extracts the video frames.
+  3. Finds when each block lands in a bin, using MediaPipe hand tracking plus a zone over each bin, with a manual check on a few trials.
+  4. Computes all objective measures.
+
+## 12. Analysis plan
 
 | | Measure | Test |
 |---|---|---|
-| Manipulation check | 2 items, 7-point, reported first | Wilcoxon signed-rank |
-| H1 workload | Raw NASA-TLX total (subscales exploratory) | Paired t-test, effect size dz |
-| H2 compensatory behaviour | Pickup latency (mean and variability), missed pickups, TLX Effort | Paired t-tests; Wilcoxon for missed pickups |
-| H3 performance | Sorting accuracy (button presses matched to blocks in order), running-sum error | Wilcoxon signed-rank (small counts, many zeros) |
-| H4 acceptance | Setup choice | Exact binomial test, at least 13 of 16 |
+| Manipulation check | 2 items | Wilcoxon signed-rank, reported first |
+| H1 | Raw NASA-TLX total | Paired t-test, effect size dz |
+| H2 | Response time (mean and variability), missed blocks, TLX Effort | Paired t-tests; Wilcoxon for missed blocks |
+| H3 | Sorting accuracy, running-sum error | Wilcoxon signed-rank |
+| H4 | Setup choice | Exact binomial test (13 of 16) |
+| Exploratory | Movement rhythm and its link to TLX | Paired comparison; correlation |
 
-With 16 participants a paired t-test detects only large effects (dz about 0.75), so effect sizes are always reported.
+Tools: pandas, pingouin, scipy, matplotlib, rosbag2 Python reader, MediaPipe. With 16 participants a paired t-test detects only large effects (dz about 0.75), so effect sizes are always reported.
 
-## 9. Safety
+## 13. Ethics and data
 
-- The participant touches screens held by the arms, so the safety rules from the block handover still apply. The presentation pose is within easy reach, at chest height, never above the head.
-- Screens stay blank while the arms move, so the cue to reach is a lit screen on a stopped arm. Participants are told to touch only lit screens.
-- Speed and acceleration limits on, collision detection confirmed active in the ROS control mode, protection zones set. The two arms' workspaces do not overlap.
-- Check in the pilot that touching the screen never trips the arm's collision protection. Capacitive touch needs almost no force.
-- A researcher stands at the emergency stop for the whole robot part.
+- Video is personal data. The consent form names the camera and what it records (hands and table, no face). It also says why we record, how long the video is stored, and who can see it.
+- Data is stored under participant IDs only, on university storage, and deleted after the project if the course allows.
+- Ask the supervisor in week 1 whether video recording needs formal ethics approval.
 
-## 10. Pilot checks (week 4)
+## 14. Paper extensions (follow-up studies with the same setup)
 
-1. Every touch is detected and logged, and the 2 s limit feels fair in the coordinated mode.
-2. The uncoordinated mode feels harder and gives some missed pickups or sum errors. If it does not, shorten the gaps in both modes, keeping the same averages.
-3. The colour screen is readable at a glance and the number is legible from the participant's position.
-4. A full session fits in 10 minutes (book 15-minute slots anyway).
+These are not part of the course form. Each one is a possible next study or paper:
 
-## 11. Timeline (6 October to mid-December 2026)
+1. **Robots that warn you (recommended first).** A clear "look up and glow" cue 1 s before each instruction. Compare async with async plus the cue: can announcing the timing make unpredictable robots predictable again?
+2. **The robot that sees you.** Robots wait until the camera sees the block placed. Compare them with robots that replay the same gaps but ignore the person: is it responsiveness, not speed, that lowers workload?
+3. **One bad robot.** Only one robot is badly timed. Does the other robot lose trust too (spillover)?
+4. **Robot or display.** The same screens framed as robots or as plain displays. Does the social framing change how people tolerate bad timing?
+5. **Robots that say sorry.** After rushing, a robot apologises and gives more time. Does that repair trust?
 
-| Week | Dates | Robot and hardware | Software | Study and participants | Milestone |
-|---|---|---|---|---|---|
-| 1 | 5 to 11 Oct | Order 2 screens, button box parts, router. Move the second arm to IP .11. Both arms moving with the stock ROS 2 driver. Confirm gripper and DoF. | ROS 2 Humble on the lab PC; fake hardware on laptops. | Send the updated form to the supervisor. Ask about ethics approval now. | Design agreed |
-| 2 | 12 to 18 Oct | Print and fit both screen holders. Teach waiting and presentation poses on both arms. Time the moves. | Screen firmware (SHOW, BLANK, TOUCH). Button box logging. | | **M1:** each arm brings a lit screen and a touch is logged (18 Oct) |
-| 3 | 19 to 25 Oct | Fix the workstation layout and e-stop position. | Arm nodes on fake hardware, then both real arms running from the schedule. Touch to leave, 2 s limit, logging. Full dry run. | Instructions script, consent form, debrief, questionnaires (check items, NASA-TLX, setup choice). Start recruiting outside the HRI course. | **M2:** a full trial runs and logs end to end (25 Oct) |
-| 4 | 26 Oct to 1 Nov | Safety check with the supervisor. | Analysis notebook built on pilot logs. | Pilot with 2 to 3 lab members, tune timing, book slots. | **M3:** protocol frozen, ethics cleared (1 Nov) |
-| 5 to 6 | 2 to 15 Nov | Arms on standby. | Check logs after every session day. | 18 participants in 15-minute slots, about 3 afternoons, rest is buffer. | **M4:** data complete (15 Nov) |
-| 7 | 16 to 22 Nov | Pack down. | Run the analysis: manipulation check first, then H1 to H4. | | **M5:** results ready (22 Nov) |
-| 8 | 23 to 29 Nov | Film the setup in both modes for the presentation. | Final figures. | Write methods and results. | |
-| 9 | 30 Nov to 6 Dec | | | Discussion, full report draft, slides, internal review. | Draft complete (6 Dec) |
-| 10 | 7 to 13 Dec | Demo mode ready for presentation day. | | Final edits, rehearse, present and submit. | **M6:** submitted (by 13 Dec) |
+The movement rhythm measure from section 7 can be added to all of them.
 
-**Work split** (assign names at the next meeting):
+## 15. Pilot checks (week 4)
 
-- **Robot and safety:** both arms, poses, screen holders, protection zones, workstation, e-stop.
-- **Software:** screen firmware, arm nodes, button logger, session script, schedule.
-- **Study side:** instructions, consent, questionnaires, recruiting, pilot, analysis notebook.
+1. Both screens are clearly readable from the participant's position, and the 2 s display feels fair in the coordinated mode.
+2. The uncoordinated mode feels harder and produces some missed blocks or sum errors. If not, shorten the gaps in both modes and keep the same averages.
+3. The camera sees both robot screens, the tray, the bins and the hands. Real screen onsets in the video match the bag times.
+4. Hand tracking finds the placements, or manual coding is quick enough.
+5. A full session fits in 10 minutes.
 
-**Critical path:** ethics approval and M2. If ethics is not cleared by 1 November, data collection moves to 16 to 29 November and weeks 7 and 8 merge. If both arms are not running from ROS by M2, use the Kinova Python API for the trial loop instead; nothing else in the plan changes.
+## 16. Timeline (7 October to 13 December 2026)
 
-## 12. Risks and fallbacks
+| Week | Dates | Work | Milestone |
+|---|---|---|---|
+| 1 | 5 to 11 Oct | Agree on the plan. Update the form. Confirm the ESP32 board model. Buy webcam, blocks and bins. Install ROS 2 and micro-ROS. Ask about ethics, including video. | Plan agreed |
+| 2 | 12 to 18 Oct | micro-ROS on both ESP32s; faces and screen states; camera node; first rosbag with all three topics; stands built. | **M1:** both robots driven from ROS 2 and recorded with the camera in one bag (18 Oct) |
+| 3 | 19 to 25 Oct | Scheduler node with the arrival table and greetings; full dry run; bag-to-table script. Consent form with video, instructions, questionnaires. Start recruiting outside the HRI course. | **M2:** a full trial runs and records end to end (25 Oct) |
+| 4 | 26 Oct to 1 Nov | Pilot with 2 to 3 lab members. Tune timing and display time. Build the analysis pipeline (response times, hand tracking). | **M3:** protocol frozen, ethics cleared (1 Nov) |
+| 5 to 6 | 2 to 15 Nov | Data collection: 18 participants in 15-minute slots, about 3 afternoons; the rest is buffer. | **M4:** data complete (15 Nov) |
+| 7 | 16 to 22 Nov | Extract and check response times; run the analysis (manipulation check first, then H1 to H4). | **M5:** results ready (22 Nov) |
+| 8 | 23 to 29 Nov | Movement rhythm analysis, figures, methods and results. | |
+| 9 | 30 Nov to 6 Dec | Discussion, full report draft, presentation slides, short demo video of both modes. | Draft complete (6 Dec) |
+| 10 | 7 to 13 Dec | Final edits, rehearsal, presentation and submission. | **M6:** submitted (by 13 Dec) |
+
+**Work split** (names to be assigned):
+
+- **Robots:** ESP32 faces, micro-ROS, stands.
+- **ROS 2 and camera:** scheduler, camera node, rosbag, analysis pipeline.
+- **Study side:** form, consent, questionnaires, recruiting, pilot, statistics.
+
+**Critical path:** ethics approval (video) and M2. If ethics is not cleared by 1 November, data collection moves to 16 to 29 November and weeks 7 and 8 merge.
+
+## 17. Risks and fallbacks
 
 | Risk | Fallback |
 |---|---|
-| Wi-Fi delay on touch or screen messages (should stay under about 50 ms) | USB cables to the screens |
-| Touch trips the arm's collision protection | Raise the thresholds slightly and add automatic fault clearing, or use a softer touch (screen in a padded frame) |
-| Arms slower than 1 s per move at safe speed | Stretch the schedule with the same rules; trial gets a few seconds longer |
-| Uncoordinated mode not harder in the pilot | Shorter gaps in both modes, same averages |
-| A screen battery runs low | Charge between session blocks; USB-C cable as backup |
-| One arm faults during a session | Clear faults and repeat the trial; note it in the log |
+| micro-ROS over Wi-Fi is unstable | Connect the ESP32s by USB (micro-ROS serial transport) |
+| Screen delay makes onsets inaccurate | The camera sees both screens, so real onsets are read from the video |
+| Hand tracking misses placements | Manual video coding for those trials (2 minutes of video per trial) |
+| Bags too large | Compressed images at 720p; delete raw copies after extraction |
+| Async mode not harder in the pilot | Shorter gaps in both modes, same averages |
+| Ethics for video takes long | Ask in week 1; record only hands and table |
+
+## 18. Open decisions for the team
+
+1. Which ESP32 boards do we have (model and screen size)? The plan works with any colour screen.
+2. Standing or seated participant? The form says standing, as before.
+3. Robot names, or just "left robot" and "right robot"?
+4. Response times from automatic hand tracking with a manual check (planned), or fully manual video coding?
+5. Is formal ethics approval needed for the video?
