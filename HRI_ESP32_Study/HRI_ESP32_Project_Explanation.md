@@ -149,7 +149,54 @@ On top of that:
 | E4 | **Wrong-bin repair** (needs C5) | The camera sees a wrong placement and the robot says "oops, wrong bin". Does a repair message help or hurt trust and workload? |
 | E5 | **One bad robot** | Only one robot is badly timed. Does the other robot lose trust too? |
 
-## 9. Screen ideas: keeping the screens robot-like
+## 9. Computer vision toolkit (lightweight, laptop CPU)
+
+**Rule of thumb:** no learning where geometry is enough (depth and markers), small pretrained models for people (hands, face), and training only if really needed (block digits).
+
+**Detecting a block landing in a bin (C1)**
+
+| Rank | Tool | What it gives | Cost |
+|---|---|---|---|
+| 1 | **Depth area check** (numpy on the RealSense depth aligned to colour) | A block-sized height rise inside a bin that stays for 0.3 s. Use the inner bin area and the median, and update the baseline after each event. | Under 1 ms per frame |
+| 2 | **RealSense filters** (`pyrealsense2` or `realsense2_camera` parameters: spatial, temporal, hole filling, decimation) | Cleaner depth | Very low |
+| 3 | **MediaPipe Hand Landmarker** (21 points per hand) | Knows when a hand is over a bin, so the depth check ignores hands | Real time on CPU |
+| 4 | **OpenCV background subtraction** (MOG2 or KNN) on the colour image | Backup change detection, also works with the webcam alone | Very low |
+
+**Knowing which block it was (C5, automatic sorting accuracy)**
+
+| Rank | Tool | Notes |
+|---|---|---|
+| 1 | **ArUco or AprilTag markers with OpenCV** (`cv2.aruco`, which also reads AprilTag 36h11) | Easiest and close to 100% accurate. The same 2.5 cm marker goes on every face of a cube, and the ID maps to the number. Works in the tray, in the hand and in the bin. Takes 10 to 30 ms per 720p frame. ROS 2: `apriltag_ros` or `ros2_aruco`. |
+| 2 | **YOLO11n or YOLOv8n** (Ultralytics), trained on the 9 digits | No markers needed. Needs 200 to 300 labelled images. Roughly 10 to 30 frames per second on a laptop CPU, faster exported to ONNX or OpenVINO. AGPL-3.0 licence. |
+| 3 | **MediaPipe Model Maker** (EfficientDet-Lite0, TensorFlow Lite) | The same idea for a TensorFlow workflow; Apache 2.0 |
+| Avoid | OCR (EasyOCR, PaddleOCR) | Too heavy for single digits |
+
+**Calibration (once per setup)**
+- **Four ArUco markers on the table corners** with OpenCV `findHomography` find the bin and tray areas automatically and give a top-down table frame. This still works if the camera is bumped.
+- **RealSense deprojection** (`rs2_deproject_pixel_to_point`) turns pixels plus depth into 3D points in cm.
+- Optional: an **Open3D RANSAC plane fit** gives the exact table plane.
+
+**People measures**
+
+| Measure | Tool |
+|---|---|
+| Hesitations, re-picks, hand paths, movement rhythm (C4) | **MediaPipe Hand Landmarker** plus depth. A hand slower than a threshold for more than 0.5 s is a pause. A block that leaves the tray and comes back (seen through its marker) is a re-pick. |
+| Which robot the participant looks at (C3, webcam) | **MediaPipe Face Landmarker**: head yaw and pitch from its face transform. Store only the angles, not the video. |
+| Leaning and reaching (optional) | **MediaPipe Pose Landmarker (lite)** |
+| Overall motion and rhythm (optional) | **OpenCV optical flow** (Farneback) or frame differencing; no model needed |
+| Keeping block IDs over time (only with YOLO) | **ByteTrack**, built into Ultralytics |
+
+**Recommended minimal stack (all on CPU)**
+1. Depth area check plus RealSense filters: a block landed, in which bin, and when.
+2. MediaPipe Hands: blocks false triggers from hands, and gives hesitations and hand paths.
+3. ArUco or AprilTag markers on the blocks and table corners (OpenCV only): block identity, automatic accuracy and calibration.
+4. Optional: MediaPipe Face Landmarker on the webcam for attention between the robots.
+
+- **Python packages:** `pyrealsense2`, `opencv-contrib-python`, `mediapipe`, `numpy`. Optional: `ultralytics`, `open3d`.
+- **ROS 2 packages:** `realsense2_camera`, `cv_bridge`, `image_transport` (compressed). Optional: `apriltag_ros` or `ros2_aruco`.
+- Each vision node subscribes to the camera and publishes only small results (events and angles). The "done" events go into the two robot topics, so the rosbag keeps its three core topics.
+
+## 10. Screen ideas: keeping the screens robot-like
 
 - **Face first:** the eyes are always visible. Even while showing an instruction, small eyes sit above the card, so it is a robot holding a card, not a display.
 - **Gaze:** the robot looks up at the participant before speaking and glances at the bin when it sees the block. With C3 it also returns eye contact.
@@ -158,7 +205,7 @@ On top of that:
 - **Bodies and names** on the stands; the robots greet and say goodbye.
 - **Optional:** one small servo per head so the robot turns toward the participant. This is not needed for the study.
 
-## 10. Research question and hypotheses
+## 11. Research question and hypotheses
 
 **Research question:** Does subjective disturbance show up in objective performance, and if it does not, where does it go?
 
@@ -171,7 +218,7 @@ On top of that:
 | H3 Performance | Sorting accuracy stays about the same in both modes; running-sum error increases in the uncoordinated mode |
 | H4 Acceptance | Most participants would choose the coordinated robots for a full work shift (binomial test, at least 13 of 16) |
 
-## 11. Measures
+## 12. Measures
 
 **Subjective:** NASA-TLX after each mode, the manipulation check, the setup choice, and two interview questions.
 
@@ -189,7 +236,7 @@ On top of that:
 
 **Why "could start":** in the coordinated mode the second block of each pair always waits while the first is handled. Measuring from "could start" removes that built-in wait, so both modes are compared fairly.
 
-## 12. Procedure (about 10 minutes)
+## 13. Procedure (about 10 minutes)
 
 1. Consent signed beforehand, including consent to the overhead video (hands and blocks only).
 2. Briefing and instructions (1 min). The robots greet the participant.
@@ -202,7 +249,7 @@ On top of that:
 
 Book 15-minute slots. Recruit 18 for 16 complete participants: 4 groups of 4 (order crossed with sequences A and B).
 
-## 13. ROS 2 setup
+## 14. ROS 2 setup
 
 **The three required topics, recorded in one rosbag per trial:**
 
@@ -230,7 +277,7 @@ Because the bin watcher writes its "done" events into the robot topics, every in
 - **Depth recording:** the depth stream is used live. If the course allows more than three topics, also record `/camera/aligned_depth_to_color/image_raw` so that detection can be rerun offline.
 - **Optional add-ons** add their own topics: C3 head angle, C4 hand keypoints, C5 tag detections.
 
-## 14. Analysis plan
+## 15. Analysis plan
 
 | | Measure | Test |
 |---|---|---|
@@ -243,14 +290,14 @@ Because the bin watcher writes its "done" events into the robot topics, every in
 
 Tools: pandas, pingouin, scipy, matplotlib, rosbag2 Python reader, and MediaPipe for C3 and C4. With 16 participants a paired t-test detects only large effects (dz about 0.75), so effect sizes are always reported.
 
-## 15. Ethics and data
+## 16. Ethics and data
 
 - The overhead camera records hands, blocks and bins, not faces. The consent form says this, why we record, how long we keep the data and who can see it.
 - With C3, face landmarks are processed live and only the head angle is stored.
 - Data is stored under participant IDs on university storage and deleted after the project if the course allows.
 - Ask the supervisor in week 1 whether the video needs formal ethics approval.
 
-## 16. Pilot checks (week 4)
+## 17. Pilot checks (week 4)
 
 1. **Detection:** C1 detects at least 95% of blocks within about 0.3 s of the tap time (participants also tap in the pilot), with no false events from hands.
 2. **Fair limit:** the 6 s limit is fair in the coordinated mode: two blocks fit comfortably.
@@ -258,7 +305,7 @@ Tools: pandas, pingouin, scipy, matplotlib, rosbag2 Python reader, and MediaPipe
 4. **Readability:** both screens are readable at a glance from the participant's position.
 5. **Time:** a full session fits in 10 minutes.
 
-## 17. Timeline (7 October to 13 December 2026)
+## 18. Timeline (7 October to 13 December 2026)
 
 | Week | Dates | Work | Milestone |
 |---|---|---|---|
@@ -278,7 +325,7 @@ Tools: pandas, pingouin, scipy, matplotlib, rosbag2 Python reader, and MediaPipe
 - **Perception:** RealSense, bin watcher, calibration, optional add-ons.
 - **Study side:** scheduler tables, form, consent, questionnaires, recruiting, pilot, statistics.
 
-## 18. Risks and fallbacks
+## 19. Risks and fallbacks
 
 | Risk | Fallback |
 |---|---|
@@ -289,7 +336,7 @@ Tools: pandas, pingouin, scipy, matplotlib, rosbag2 Python reader, and MediaPipe
 | Uncoordinated mode not harder in the pilot | Shorter gaps in both modes, same averages |
 | Ethics for video takes long | Ask in week 1; the camera sees hands only |
 
-## 19. Open decisions for the team
+## 20. Open decisions for the team
 
 1. Camera detection with tap fallback (recommended), or tapping only?
 2. Which RealSense: D435 (recommended), D435i or D415?
